@@ -3,6 +3,7 @@ import {
   fileToImage,
   imageToCanvas,
   removeBackground,
+  preloadBackgroundModel,
   type RemovalMode,
 } from './lib/background';
 import { prepareSubject, pixelate } from './lib/pixelate';
@@ -44,6 +45,8 @@ export default function App() {
       // objectURL 은 로드 후 폐기되므로 안정적인 dataURL 로 미리보기 저장
       setPreviewUrl(imageToCanvas(img, 512).toDataURL('image/png'));
       setScreen('preview');
+      // 사진을 고르는 즉시 모델을 미리 받아둔다(변환 누를 때쯤이면 준비 완료).
+      if (mode === 'ai') preloadBackgroundModel();
     } catch (e) {
       setError(e instanceof Error ? e.message : '이미지 오류');
     }
@@ -54,11 +57,17 @@ export default function App() {
     setScreen('processing');
     setError(null);
     try {
-      const base = imageToCanvas(sourceImg);
+      // 출력이 ≤64px 도트라 큰 원본이 필요 없다. 작게 넣을수록 추론이 빠름.
+      const base = imageToCanvas(sourceImg, 512);
 
       setStatus(mode === 'ai' ? '대상을 인식하는 중…' : '배경을 지우는 중…');
       await tick();
-      const removed = await removeBackground(base, mode);
+      const removed = await removeBackground(base, mode, (p) => {
+        const pct = Math.round(p * 100);
+        if (mode === 'ai' && pct > 0 && pct < 100) {
+          setStatus(`대상을 인식하는 중… ${pct}%`);
+        }
+      });
       const subject = prepareSubject(removed);
 
       const rarity = rollRarity();
