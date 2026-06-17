@@ -7,7 +7,7 @@ import {
   type RemovalMode,
 } from './lib/background';
 import { prepareSubject, pixelate } from './lib/pixelate';
-import { rollRarity } from './lib/rarity';
+import { RARITIES, RARITY_ORDER, rarityChance, rollRarity } from './lib/rarity';
 import { generateName } from './lib/naming';
 import { dex } from './lib/storage';
 import { renderCard, downloadDataUrl } from './lib/cardExport';
@@ -26,7 +26,7 @@ export default function App() {
   const [result, setResult] = useState<DexEntry | null>(null);
   const [showDex, setShowDex] = useState(false);
   const [dexCount, setDexCount] = useState(0);
-  const [mode, setMode] = useState<RemovalMode>('ai');
+  const [mode, setMode] = useState<RemovalMode>('fast');
   const [error, setError] = useState<string | null>(null);
 
   const cameraInput = useRef<HTMLInputElement>(null);
@@ -42,10 +42,8 @@ export default function App() {
     try {
       const img = await fileToImage(file);
       setSourceImg(img);
-      // objectURL 은 로드 후 폐기되므로 안정적인 dataURL 로 미리보기 저장
       setPreviewUrl(imageToCanvas(img, 512).toDataURL('image/png'));
       setScreen('preview');
-      // 사진을 고르는 즉시 모델을 미리 받아둔다(변환 누를 때쯤이면 준비 완료).
       if (mode === 'ai') preloadBackgroundModel();
     } catch (e) {
       setError(e instanceof Error ? e.message : '이미지 오류');
@@ -57,21 +55,22 @@ export default function App() {
     setScreen('processing');
     setError(null);
     try {
-      // 출력이 ≤64px 도트라 큰 원본이 필요 없다. 작게 넣을수록 추론이 빠름.
       const base = imageToCanvas(sourceImg, 512);
 
-      setStatus(mode === 'ai' ? '대상을 인식하는 중…' : '배경을 지우는 중…');
+      setStatus(mode === 'ai' ? '대상을 인식하는 중...' : '색과 실루엣을 찾는 중...');
       await tick();
       const removed = await removeBackground(base, mode, (p) => {
         const pct = Math.round(p * 100);
         if (mode === 'ai' && pct > 0 && pct < 100) {
-          setStatus(`대상을 인식하는 중… ${pct}%`);
+          setStatus(`대상을 인식하는 중... ${pct}%`);
         }
       });
       const subject = prepareSubject(removed);
 
+      setStatus('해상도 확률을 굴리는 중...');
+      await tick();
       const rarity = rollRarity();
-      setStatus('픽셀로 빚는 중…');
+      setStatus(`${rarity.resolution} x ${rarity.resolution} 픽셀로 빚는 중...`);
       await tick();
       const { display, attribute } = pixelate(
         subject,
@@ -140,7 +139,18 @@ export default function App() {
           <div className="logo">
             <span className="logo-pixel">▣</span>
             <h1>PIXEL CATCHER</h1>
-            <p className="tagline">사진을 도트 친구로 — 어떤 등급이 나올까?</p>
+            <p className="tagline">사진의 색과 모양을 잡아 도트 친구로 저장해요</p>
+          </div>
+
+          <div className="odds-strip" aria-label="해상도 확률">
+            {RARITY_ORDER.map((id) => {
+              const rarity = RARITIES[id];
+              return (
+                <span key={id} style={{ color: rarity.color }}>
+                  {rarity.resolution}x{rarity.resolution} {rarityChance(id)}
+                </span>
+              );
+            })}
           </div>
 
           <div className="home-actions">
@@ -155,13 +165,19 @@ export default function App() {
             </button>
           </div>
 
+          <p className="hint">
+            처음엔 사람, 동물, 소품처럼 가운데에 크게 보이는 대상을 찍으면 잘 잡혀요.
+          </p>
+
           <label className="mode-toggle">
             <input
               type="checkbox"
               checked={mode === 'ai'}
               onChange={(e) => setMode(e.target.checked ? 'ai' : 'fast')}
             />
-            <span>AI 배경 인식 {mode === 'ai' ? '켜짐' : '꺼짐(빠름)'}</span>
+            <span>
+              고급 AI 배경 인식 {mode === 'ai' ? '켜짐' : '꺼짐 - 빠른 캐릭터화'}
+            </span>
           </label>
           {error && <p className="error">{error}</p>}
         </div>
@@ -179,10 +195,12 @@ export default function App() {
           <div className="preview-frame">
             <img src={previewUrl} alt="미리보기" />
           </div>
-          <p className="hint">대상이 가운데에 크게 보이면 더 잘 잡혀요.</p>
+          <p className="hint">
+            변환하면 색, 외곽선, 작은 소품이 단순한 도트 캐릭터에 반영됩니다.
+          </p>
           <div className="stack">
             <button className="btn btn-big btn-primary" onClick={run}>
-              ✨ 도트로 변환하기
+              🎲 해상도 뽑고 도트화하기
             </button>
             <button className="btn btn-ghost" onClick={reset}>
               다른 사진 고르기
@@ -202,7 +220,9 @@ export default function App() {
             </div>
           </div>
           <p className="status">{status}</p>
-          <p className="hint">AI 모델 첫 실행 시 잠깐 더 걸릴 수 있어요.</p>
+          <p className="hint">
+            낮은 해상도일수록 더 뭉툭하고, 높은 해상도일수록 사진의 특징이 더 남아요.
+          </p>
         </div>
       )}
 
@@ -229,7 +249,6 @@ export default function App() {
   );
 }
 
-/** UI 가 다시 그려질 틈을 준다(상태 텍스트 갱신용). */
 function tick() {
   return new Promise((r) => setTimeout(r, 30));
 }

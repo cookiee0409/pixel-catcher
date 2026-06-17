@@ -7,7 +7,6 @@ interface Props {
   reveal?: boolean;
 }
 
-/** 결과/도감 상세에서 쓰는 캐릭터 카드. */
 export default function GachaCard({ entry, reveal }: Props) {
   const rarity = RARITIES[entry.rarity];
   return (
@@ -31,9 +30,9 @@ export default function GachaCard({ entry, reveal }: Props) {
 
       <dl className="card-info">
         <div>
-          <dt>해상도</dt>
+          <dt>획득 해상도</dt>
           <dd>
-            {entry.resolution} × {entry.resolution}
+            {entry.resolution} x {entry.resolution}
           </dd>
         </div>
         <div>
