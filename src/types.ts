@@ -30,6 +30,8 @@ export interface DexEntry {
   attribute: string; // attribute id
   attributeLabel: string;
   attributeEmoji: string;
+  subjectKind?: 'cat' | 'dog' | 'person';
+  accessory?: 'none' | 'hat' | 'collar' | 'bag';
   date: string; // ISO
   image: string; // 캐릭터 스프라이트 PNG dataURL (투명 배경)
 }

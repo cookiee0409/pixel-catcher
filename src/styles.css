@@ -241,6 +241,40 @@ body {
   max-height: 100%;
   border-radius: 8px;
 }
+.subject-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.subject-picker > p {
+  color: var(--panel);
+  font-size: 13px;
+  margin: 0;
+  text-align: center;
+}
+.segmented-control {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 4px;
+  border-radius: 8px;
+  background: var(--bg-2);
+}
+.segmented-control button {
+  min-width: 0;
+  border: 0;
+  border-radius: 6px;
+  padding: 10px 4px;
+  background: transparent;
+  color: #c9b89c;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.segmented-control button.active {
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2);
+}
 .hint {
   text-align: center;
   color: #c9b89c;
@@ -292,6 +326,11 @@ body {
   font-size: 15px;
   margin: 0;
   animation: pop 0.5s ease;
+}
+.result-summary {
+  margin: -4px 0 0;
+  color: #c9b89c;
+  font-size: 12px;
 }
 @keyframes pop {
   from {
